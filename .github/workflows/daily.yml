@@ -35,22 +35,26 @@ jobs:
 
       - name: 5. Commit and Push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 注入官方 Token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 1. 配置身份
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 2. 重新设置远程仓库地址，带上 Token 确保绝对拥有权限
+          # 2. 修改远程 URL (确保有写入权限)
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           
-          # 3. 检查变更并处理
+          # 3. 先将脚本生成的文件全部暂存并提交到本地
           git add .
           if ! git diff --staged --quiet; then
-            # 使用 rebase 避免产生多余的 Merge commit
-            git pull origin main --rebase
             git commit -m "Auto: Update daily problem $(date +'%Y-%m-%d')"
+            
+            # 4. 关键：先 commit 之后再 pull rebase，这样就不会报错 index contains uncommitted changes
+            # 这样 Git 会把远程的变更排在下面，把你刚刚生成的本地提交排在最上面
+            git pull origin main --rebase
+            
+            # 5. 最后推送
             git push origin main
           else
-            echo "No changes detected, skipping push."
+            echo "No changes detected, skipping."
           fi
