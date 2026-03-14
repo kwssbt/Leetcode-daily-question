@@ -17,12 +17,10 @@ async def run_task():
     }
     
     try:
-        # 获取今日题目的 slug
         slug_query = {"query": "query { todayRecord { question { questionTitleSlug } } }"}
         slug_res = requests.post(gql_url, json=slug_query, headers=headers).json()
         slug = slug_res['data']['todayRecord'][0]['question']['questionTitleSlug']
         
-        # 获取题目的详细信息
         detail_query = {
             "query": "query q($s:String!){question(titleSlug:$s){questionFrontendId translatedTitle translatedContent difficulty}}", 
             "variables": {"s": slug}
@@ -35,26 +33,21 @@ async def run_task():
     # 2. 文件夹与路径逻辑
     today = datetime.date.today().strftime("%Y-%m-%d")
     folder_path = today
-    
     if not os.path.exists(folder_path): 
         os.makedirs(folder_path)
 
-    pdf_name = f"{today}.pdf"
-    img_name = f"{today}.png"
-    md_name = f"{today}.md"
+    pdf_name, img_name, md_name = f"{today}.pdf", f"{today}.png", f"{today}.md"
+    pdf_path, img_path, md_path = os.path.join(folder_path, pdf_name), os.path.join(folder_path, img_name), os.path.join(folder_path, md_name)
     
-    pdf_path = os.path.join(folder_path, pdf_name)
-    img_path = os.path.join(folder_path, img_name)
-    md_path = os.path.join(folder_path, md_name)
-    
-    # 3. 使用 Playwright 生成文档
+    # 3. 使用 Playwright 生成文档 (加入备选字体族)
     print(f"📄 正在生成文档至目录: {folder_path}/ ...")
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
         
+        # 样式中显式指定中文字体族
         style = """<style>
-            body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;padding:30px;line-height:1.6;color:#1a1a1a;background:white;}
+            body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;padding:30px;line-height:1.6;color:#1a1a1a;background:white;}
             h1{font-size:22px;margin-bottom:8px;font-weight:600;color:#000;border-bottom:1px solid #ddd;padding-bottom:8px;}
             .meta{font-size:13px;color:#666;margin-bottom:20px;}
             pre{background:#f8f8f8;padding:12px;border-radius:4px;border:1px solid #eee;overflow-x:auto;font-size:13px;}
@@ -65,20 +58,10 @@ async def run_task():
             th{background:#fafafa;font-weight:600;}
         </style>"""
         
-        html_content = f"""
-        <html>
-        <head><meta charset='UTF-8'>{style}</head>
-        <body>
-            <h1>{res['questionFrontendId']}. {res['translatedTitle']}</h1>
-            <div class='meta'>难度: <b>{res['difficulty']}</b></div>
-            <div>{res['translatedContent']}</div>
-        </body>
-        </html>
-        """
+        html_content = f"<html><head><meta charset='UTF-8'>{style}</head><body><h1>{res['questionFrontendId']}. {res['translatedTitle']}</h1><div class='meta'>难度: <b>{res['difficulty']}</b></div><div>{res['translatedContent']}</div></body></html>"
         
         await page.set_content(html_content)
-        await asyncio.sleep(1) 
-        
+        await asyncio.sleep(2) # 稍微延长等待时间确保字体加载
         await page.pdf(path=pdf_path, format="A4", margin={"top":"1.2cm","bottom":"1.2cm","left":"1.2cm","right":"1.2cm"})
         await page.screenshot(path=img_path, full_page=True)
         await browser.close()
