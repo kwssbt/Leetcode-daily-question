@@ -34,17 +34,23 @@ jobs:
           python leetcode_daily.py
 
       - name: 5. Commit and Push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 注入官方 Token
         run: |
-          git config --global user.name "LeetCodeBot"
-          git config --global user.email "bot@github.com"
+          # 1. 配置身份
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
+          # 2. 重新设置远程仓库地址，带上 Token 确保绝对拥有权限
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          
+          # 3. 检查变更并处理
           git add .
-          # 检查是否有变更，防止空提交报错
           if ! git diff --staged --quiet; then
-            # 先拉取远程，防止 Action 运行时你本地也有推送导致冲突
+            # 使用 rebase 避免产生多余的 Merge commit
             git pull origin main --rebase
             git commit -m "Auto: Update daily problem $(date +'%Y-%m-%d')"
             git push origin main
           else
-            echo "No changes detected."
+            echo "No changes detected, skipping push."
           fi
