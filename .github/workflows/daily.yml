@@ -2,9 +2,12 @@ name: LeetCode Daily Auto-Fetch
 
 on:
   schedule:
-    # 每天北京时间 00:00 运行 (UTC 16:00)
-    - cron: '0 16 * * *'
-  workflow_dispatch: # 允许在网页上手动点击运行
+    - cron: '0 16 * * *' # 北京时间 00:00
+  workflow_dispatch: 
+
+# 核心修复：显式声明写入权限，解决 Exit Code 128
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -12,36 +15,36 @@ jobs:
 
     steps:
       - name: 1. Checkout repository
-        uses: actions/checkout@v3
+        # 升级到了 v4，消除 Node.js 20 弃用警告
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取完整历史，便于后续的 rebase
+          fetch-depth: 0 
 
       - name: 2. Set up Python
-        uses: actions/setup-python@v4
+        # 升级到了 v5，消除 Node.js 20 弃用警告
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11' # 使用稳定的 3.11 避免兼容性问题
 
       - name: 3. Install dependencies
         run: |
           pip install requests playwright
-          # 必须安装 Chromium 浏览器，否则 Playwright 截图和生成 PDF 会失败
           playwright install chromium
 
       - name: 4. Run Crawler Script
         run: |
           python leetcode_daily.py
 
-      - name: 5. Commit and Push to Repository
+      - name: 5. Commit and Push
         run: |
           git config --global user.name "LeetCodeBot"
           git config --global user.email "bot@github.com"
+          
+          # 检查是否有内容变更
           git add .
-          
-          # 关键防御机制：先拉取远程最新内容并 rebase 合并，防止覆盖你本地手动提交的笔记
-          git pull origin main --rebase
-          
-          # 检查是否有文件变更，如果有则提交并推送
           if ! git diff --staged --quiet; then
+            # 先拉取远程变更防止冲突
+            git pull origin main --rebase
             git commit -m "Auto: Update daily problem $(date +'%Y-%m-%d')"
             git push origin main
           else
