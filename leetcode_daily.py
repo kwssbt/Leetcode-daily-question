@@ -114,8 +114,8 @@ async def run_task():
         with open(md_path, "w", encoding="utf-8") as f: 
             f.write(md_tpl)
 
-    # 5. 更新 README.md (最新日期排在最上面)
-    print("📝 正在更新 README.md (倒序排列)...")
+    # 5. 更新 README.md (最新日期排在最上面，且表头仅保留一份)
+    print("📝 正在更新 README.md (优化表格结构)...")
     readme_path = "README.md"
     header = "# LeetCode 每日一题记录\n\n| 日期 | 题目 | 难度 | 附件 |\n| :--- | :--- | :--- | :--- |\n"
     new_entry = f"| {today} | [{res['questionFrontendId']}. {res['translatedTitle']}](./{folder_path}/{md_name}) | {res['difficulty']} | [PDF](./{folder_path}/{pdf_name}) |"
@@ -124,14 +124,19 @@ async def run_task():
     if os.path.exists(readme_path):
         with open(readme_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
-            # 如果今天已经记录过了，直接退出，不重复操作
+            # 1. 如果今天已经记录过了，直接退出，防止 Actions 报错或重复插入
             if any(today in line for line in lines):
                 print(f"✅ 今日题目 {today} 已经存在于目录中。")
                 return
-            # 提取现有的数据行（跳过前 4 行表头）
-            existing_rows = [line.strip() for line in lines if line.startswith("|") and ":---" not in line]
+            
+            # 2. 核心修复：只保留真正包含日期的数据行
+            # 我们过滤掉标题、空行、以及包含 "日期" 或 "---" 的表头行
+            for line in lines:
+                line = line.strip()
+                if line.startswith("|") and "日期" not in line and ":---" not in line:
+                    existing_rows.append(line)
 
-    # 将新行放在第一位，后面接旧行
+    # 3. 将新行置顶，重新组合
     all_rows = [new_entry] + existing_rows
     
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -139,7 +144,7 @@ async def run_task():
         for row in all_rows:
             f.write(row + "\n")
             
-    print(f"🎉 任务完美结束! 目录已更新，最新题目已置顶。")
+    print(f"🎉 目录已重构，表头已精简，最新题目已置顶。")
 
 if __name__ == "__main__":
     asyncio.run(run_task())
