@@ -106,7 +106,7 @@ async def run_task():
         with open(md_path, "w", encoding="utf-8") as f: 
             f.write(md_tpl)
 
-    # 5. 更新 README.md (按年月分类动态生成)
+    "\n"# 5. 更新 README.md (按年月分类动态生成)
     print("📝 正在更新 README.md (按年月分类重构)...")
     readme_path = "README.md"
     
@@ -121,10 +121,14 @@ async def run_task():
                     parts = line.split("|")
                     if len(parts) > 2:
                         date_key = parts[1].strip()
-                        records[date_key] = line
+                        # 💡 关键修复：自动把 Windows 风格的反斜杠 \ 替换为 Markdown 支持的正斜杠 /
+                        records[date_key] = line.replace("\\", "/")
 
-    # 写入今日新数据 (使用带有年月的新路径格式)
-    new_entry = f"| {today} | [{res['questionFrontendId']}. {res['translatedTitle']}](./{folder_path}/{md_name}) | {res['difficulty']} | [PDF](./{folder_path}/{pdf_name}) |"
+    # 💡 关键修复：专门构建一个用于网页链接的路径，强制使用正斜杠 /
+    url_folder_path = f"{year}/{month}/{today}"
+    
+    # 写入今日新数据 (使用 url_folder_path)
+    new_entry = f"| {today} | [{res['questionFrontendId']}. {res['translatedTitle']}](./{url_folder_path}/{md_name}) | {res['difficulty']} | [PDF](./{url_folder_path}/{pdf_name}) |"
     records[today] = new_entry
 
     # 将所有日期降序排列
@@ -156,7 +160,7 @@ async def run_task():
             # 写入题目数据行
             f.write(records[d] + "\n")
             
-    print(f"🎉 目录已按年月分类重构完毕，最新题目已置顶。")
+    print(f"🎉 目录已按年月分类重构完毕，最新题目已置顶，历史链接修复完成。")
 
 if __name__ == "__main__":
     asyncio.run(run_task())
