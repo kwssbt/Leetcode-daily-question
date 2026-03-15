@@ -30,8 +30,9 @@ async def run_task():
         print(f"❌ 数据抓取错误: {e}")
         sys.exit(1)
 
-    # 2. 文件夹与路径逻辑
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    # 2. 文件夹与路径逻辑 (修复为北京时间 UTC+8)
+    tz_bj = datetime.timezone(datetime.timedelta(hours=8))
+    today = datetime.datetime.now(tz_bj).strftime("%Y-%m-%d")
     year = today[:4]
     month = today[5:7]
     
